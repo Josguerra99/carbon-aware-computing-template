@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { WorkshopModel } from "../main";
-import { LoadTrainingData } from "../loadData";
+import { DataDownloader } from "../core/dataDownloader";
 import { Logger } from "../core/debugLogs";
+import { LoadTrainingData } from "../loadData";
+import { WorkshopModel } from "../main";
 
 const PORT = Number(process.env.PORT ?? 3916);
 const MAIN_SERVER_URL = process.env.MAIN_SERVER_URL ?? "http://192.168.0.232:3915";
@@ -46,8 +47,8 @@ function hourlyUtcRange(start: Date, end: Date): Date[] {
 }
 
 console.log("Training prediction model...");
-const trainingData = await LoadTrainingData.load();
-await WorkshopModel.train(trainingData);
+const datasets = await LoadTrainingData.load();
+await WorkshopModel.train(datasets);
 console.log("Prediction model trained");
 
 app.get("/forecast/:datasetid", async (c) => {
@@ -62,11 +63,20 @@ app.get("/forecast/:datasetid", async (c) => {
   if (hours.length > MAX_HOURS) {
     return c.json({ error: "range too long" }, 400);
   }
+  let latitude: number;
+  let longitude: number;
+  try {
+    const place = await DataDownloader.loadHistoric(datasetId);
+    latitude = place.latitude;
+    longitude = place.longitude;
+  } catch {
+    return c.json({ error: `No se pudo leer el histórico de ${datasetId}` }, 502);
+  }
   const slots = [];
   for (const timestamp of hours) {
     try{
       Logger.AllowDebugLogs = true;
-    const predWm2 = await WorkshopModel.forecast(timestamp);
+    const predWm2 = await WorkshopModel.forecast(timestamp, latitude, longitude);
     slots.push({
       time: timestamp.toISOString(),
       predWm2: Number(predWm2) || 0,

@@ -1,7 +1,16 @@
+import { ManualForecast } from "./core/manual";
 import { MathHelper } from "./core/mathHelper";
 import { PredictionModel } from "./core/predictionModel";
-import type { GhiSlot } from "./core/types";
+import type { GhiHistoric, GhiSlot } from "./core/types";
 
+/** Local solar hour in [0, 24). Earth rotates 15° per hour; longitude is the timezone offset. */
+function solarHour(timestamp: Date, longitude: number): number {
+  const utc =
+    timestamp.getUTCHours() +
+    timestamp.getUTCMinutes() / 60 +
+    timestamp.getUTCSeconds() / 3600;
+  return Math.round(((utc + longitude / 15) % 24 + 24) % 24);
+}
 
 class SimplePredictionModel extends PredictionModel {
 
@@ -11,14 +20,15 @@ class SimplePredictionModel extends PredictionModel {
   private startHour: number = 5;
 
 
-
+private trainingData: GhiSlot[]=[];
   /**
    * Entrena el modelo con los datos de entrenamiento.
    * Esta función es llamada una vez al inicio del programa.
-   * @param trainingData - Los datos de entrenamiento.
+   * @param datasets - Históricos por dataset
    * @returns void
    */
   async train(trainingData: GhiSlot[]): Promise<void> {
+    this.trainingData=trainingData;
     
 
     let previousUtcDay=0;
@@ -34,7 +44,7 @@ class SimplePredictionModel extends PredictionModel {
     let previousGhiWm2: number = trainingData[0]?.ghiWm2 ?? 0;
     for(let i=0;i<trainingData.length;i++){
       let utcGlobalDay =Math.round( new Date(trainingData[i].time).getTime() / 1000 / 60 / 60 / 24);
-      const hour=trainingData[i].time.getUTCHours();
+      const hour=solarHour(trainingData[i].time, trainingData[i].longitude);
       const currentGhiWm2=trainingData[i].ghiWm2;
 
       if(previousGhiWm2===0 && currentGhiWm2!==0){
@@ -72,20 +82,27 @@ class SimplePredictionModel extends PredictionModel {
 
     if (this.endHour < this.startHour) this.endHour += 24;
 
-    this.forecast(new Date("2026-09-06T13:00:00Z"));
 
   }
 
+  private filtersCache: Map<{
+    latitude: number;
+    longitude: number;
+    hour: number;
+  }, GhiSlot[]> = new Map();
   /**
    * Predice el GHI en un timestamp UTC.
    * @param timestamp - La fecha y hora UTC a predecir.
+   * @param latitude - Latitud del dataset pedido.
+   * @param longitude - Longitud del dataset pedido.
    * @returns El valor del GHI predicho.
    */
-  async forecast(timestamp: Date): Promise<number> {
+  async forecast(timestamp: Date, latitude: number, longitude: number): Promise<number> {
     
-    const parabola = MathHelper.createParabola(this.height,this.startHour,this.endHour);
-    let hour=timestamp.getUTCHours();
+    let hour = solarHour(timestamp, longitude);
     if (hour < this.startHour) hour += 24;
+
+    const parabola = MathHelper.createParabola(this.height,this.startHour,this.endHour);
     const kw= parabola(hour);
     return Math.max(0, kw);
   }
