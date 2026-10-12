@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Exe,
     [Parameter(Mandatory = $true)]
-    [string[]]$ArgumentList,
+    [Alias("Args")]
+    [string[]]$ProcessArguments,
     [Parameter(Mandatory = $true)]
     [string]$WorkingDirectory,
     [int]$Port = 3916
@@ -17,7 +18,7 @@ Write-Host "Arrancamos el servidor un momento en el puerto $Port para que Window
 Write-Host "Si aparece: elige RED PRIVADA y PERMITIR (no bloquear en redes privadas)." -ForegroundColor Yellow
 Write-Host ""
 
-$proc = Start-Process -FilePath $Exe -ArgumentList $ArgumentList -WorkingDirectory $WorkingDirectory -PassThru
+$proc = Start-Process -FilePath $Exe -ArgumentList $ProcessArguments -WorkingDirectory $WorkingDirectory -PassThru
 Start-Sleep -Seconds 4
 
 if ($proc.HasExited) {
