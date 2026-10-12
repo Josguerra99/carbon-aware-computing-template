@@ -36,9 +36,7 @@ bash scripts/ubuntu/run.sh
 
 ## Windows y la LAN del taller
 
-**`setup.cmd`** (sin administrador) arranca el servidor unos segundos para que salga el aviso de **Windows Defender**. Ahí: **Red privada** + **Permitir**. Wi‑Fi del taller en perfil **Private**.
-
-**`run.cmd`** solo pide **UAC** si Windows dejó **Block** para **bun.exe** en red privada (elección incorrecta en el aviso). Si no hay bloqueo, arranca directo.
+**`run.cmd`**: primero el **aviso** (Wi‑Fi privada, Permitir en el popup de Windows), luego **abre el puerto un momento** la primera vez para forzar ese aviso de **Defender**, después corrige **Block** en privada solo si hace falta (**UAC**). Borra `.local\lan-defender-ok` si quieres repetir el aviso forzado.
 
 Opcional (admin): `scripts\windows\open-lan-firewall.cmd 3916`
 

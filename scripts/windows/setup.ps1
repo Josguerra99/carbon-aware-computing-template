@@ -35,9 +35,5 @@ Ensure-Bun
 Write-Host "Installing dependencies (bun install)..."
 bun install
 
-$bunExe = (Get-Command bun).Source
-& (Join-Path $PSScriptRoot "prompt-lan-firewall.ps1") `
-    -Exe $bunExe -ProcessArguments @("run", "dev") -WorkingDirectory $Root -Port 3916
-
 Write-Host ""
 Write-Host "Setup complete. Run: scripts\windows\run.cmd" -ForegroundColor Green
