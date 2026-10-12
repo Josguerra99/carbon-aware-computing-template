@@ -1,0 +1,7 @@
+{
+  "watch": ["src"],
+  "ext": "ts,json",
+  "exec": "tsx --import ./src/workshop/tfPreload.ts src/server/index.ts",
+  "signal": "SIGTERM",
+  "delay": "500"
+}

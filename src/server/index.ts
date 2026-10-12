@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { DataDownloader } from "../core/dataDownloader";
+import { MAIN_SERVER_URL, PORT } from "../config/env";
+import { historicStore } from "../core/historicStore";
 import { Logger } from "../core/debugLogs";
-import { LoadTrainingData } from "../loadData";
+import { perfLog, perfMs, perfNow } from "../core/perfLog";
+import { LoadTrainingData, mapPool } from "../loadData";
 import { WorkshopModel } from "../main";
-
-const PORT = Number(process.env.PORT ?? 3916);
-const MAIN_SERVER_URL = process.env.MAIN_SERVER_URL ?? "http://192.168.0.232:3915";
 const HOUR_MS = 3_600_000;
 const MAX_HOURS = 24 * 100;
+const FORECAST_CONCURRENCY = 16;
 
 const app = new Hono();
 
@@ -46,12 +46,19 @@ function hourlyUtcRange(start: Date, end: Date): Date[] {
   return times;
 }
 
-console.log("Training prediction model...");
-const datasets = await LoadTrainingData.load();
-await WorkshopModel.train(datasets);
-console.log("Prediction model trained");
+{
+  const t0 = perfNow();
+  perfLog("training load start");
+  const datasets = await LoadTrainingData.load();
+  perfLog(`training load ${perfMs(t0)}ms slots=${datasets.length}`);
+  const t1 = perfNow();
+  await WorkshopModel.train(datasets);
+  perfLog(`model.train ${perfMs(t1)}ms`);
+  perfLog(`startup total ${perfMs(t0)}ms`);
+}
 
 app.get("/forecast/:datasetid", async (c) => {
+  const tRequest = perfNow();
   const datasetId = c.req.param("datasetid");
   const start = parseUtc(c.req.query("start"));
   const end = parseUtc(c.req.query("end"));
@@ -65,34 +72,54 @@ app.get("/forecast/:datasetid", async (c) => {
   }
   let latitude: number;
   let longitude: number;
+  const tMeta = perfNow();
   try {
-    const place = await DataDownloader.loadHistoric(datasetId);
+    const place = await historicStore.getMeta(datasetId);
     latitude = place.latitude;
     longitude = place.longitude;
   } catch {
+    perfLog(`forecast ${datasetId} meta fail ${perfMs(tMeta)}ms`);
     return c.json({ error: `No se pudo leer el histórico de ${datasetId}` }, 502);
   }
-  const slots = [];
-  for (const timestamp of hours) {
-    try{
-      Logger.AllowDebugLogs = true;
-    const predWm2 = await WorkshopModel.forecast(timestamp, latitude, longitude);
-    slots.push({
-      time: timestamp.toISOString(),
-      predWm2: Number(predWm2) || 0,
+  perfLog(
+    `forecast ${datasetId} meta ${perfMs(tMeta)}ms hours=${hours.length} concurrency=${FORECAST_CONCURRENCY}`,
+  );
+  Logger.AllowDebugLogs = true;
+  let slots: { time: string; predWm2: number }[] = [];
+  let predictSumMs = 0;
+  let predictMaxMs = 0;
+  const tPool = perfNow();
+  try {
+    slots = await mapPool(hours, FORECAST_CONCURRENCY, async (timestamp) => {
+      const tOne = perfNow();
+      const predWm2 = Number(await WorkshopModel.forecast(timestamp, latitude, longitude)) || 0;
+      const oneMs = perfMs(tOne);
+      predictSumMs += oneMs;
+      if (oneMs > predictMaxMs) {
+        predictMaxMs = oneMs;
+      }
+      return { time: timestamp.toISOString(), predWm2 };
     });
-  }finally{
+  } finally {
     Logger.AllowDebugLogs = false;
   }
-  }
+  const poolMs = perfMs(tPool);
+  const avgMs = hours.length ? (predictSumMs / hours.length).toFixed(2) : "0";
+  perfLog(
+    `forecast ${datasetId} predict pool=${poolMs}ms sum=${predictSumMs}ms max=${predictMaxMs}ms avg=${avgMs}ms/h`,
+  );
+  perfLog(`forecast ${datasetId} total ${perfMs(tRequest)}ms`);
   return c.json({ datasetId, slots });
 });
 
-Bun.serve({
-  port: PORT,
-  hostname: "0.0.0.0",
-  fetch: app.fetch,
-});
+const host = "0.0.0.0";
+
+if (typeof Bun !== "undefined") {
+  Bun.serve({ port: PORT, hostname: host, fetch: app.fetch });
+} else {
+  const { serve } = await import("@hono/node-server");
+  serve({ fetch: app.fetch, port: PORT, hostname: host });
+}
 
 console.log(`Template forecast en http://localhost:${PORT}`);
 console.log(`Inicio: http://localhost:${PORT}/`);

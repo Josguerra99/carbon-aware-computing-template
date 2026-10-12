@@ -6,14 +6,27 @@
   "module": "src/main.ts",
   "scripts": {
     "dev": "bun run --watch src/server/index.ts",
-    "start": "bun run src/server/index.ts"
+    "start": "bun run src/server/index.ts",
+    "dev:node": "nodemon",
+    "start:node": "tsx src/server/index.ts",
+    "setup:tf": "powershell -ExecutionPolicy Bypass -File scripts/setup-tf-node.ps1",
+    "setup:wsl": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tf.ps1",
+    "setup:wsl:cuda": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tfjs-cuda-venv.ps1",
+    "start:wsl": "powershell -ExecutionPolicy Bypass -File scripts/start-wsl-tf.ps1"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.9",
     "@tensorflow/tfjs": "^4.22.0",
-    "hono": "^4.13.5"
+    "hono": "^4.13.5",
+    "tsx": "^4.20.5"
+  },
+  "optionalDependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@tensorflow/tfjs-node-gpu": "^4.22.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "nodemon": "^3.1.10",
     "typescript": "^5.9.0"
   }
 }

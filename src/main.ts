@@ -2,6 +2,14 @@ import { ManualForecast } from "./core/manual";
 import { MathHelper } from "./core/mathHelper";
 import { PredictionModel } from "./core/predictionModel";
 import type { GhiHistoric, GhiSlot } from "./core/types";
+import { LinearRegression, LinearRegressionGlobal } from "./workshop/linearRegression";
+import { NaiveParabola } from "./workshop/naiveParabola";
+import { PolynomialSpline, PolynomialSplineGlobal } from "./workshop/polynomialSpline";
+import { SineCosineRegression, SineCosineRegressionGlobal } from "./workshop/sineCosineRegression";
+import { HeliosComposer } from "./workshop/heliosComposer";
+import { TfNeuralNetwork } from "./workshop/tfNeuralNetwork";
+import { TfNeuralNetworkEnhanced } from "./workshop/tfNeuralNetworkEnhanced";
+import { TfTransformer } from "./workshop/tfTransformer";
 
 /** Local solar hour in [0, 24). Earth rotates 15° per hour; longitude is the timezone offset. */
 function solarHour(timestamp: Date, longitude: number): number {
@@ -9,15 +17,10 @@ function solarHour(timestamp: Date, longitude: number): number {
     timestamp.getUTCHours() +
     timestamp.getUTCMinutes() / 60 +
     timestamp.getUTCSeconds() / 3600;
-  return Math.round(((utc + longitude / 15) % 24 + 24) % 24);
+  return Math.round(((utc + longitude / 15) % 24 + 24) % 24) % 24;
 }
 
 class SimplePredictionModel extends PredictionModel {
-
-
-  private height: number = 982;
-  private endHour: number = 12;
-  private startHour: number = 5;
 
 
 private trainingData: GhiSlot[]=[];
@@ -28,68 +31,10 @@ private trainingData: GhiSlot[]=[];
    * @returns void
    */
   async train(trainingData: GhiSlot[]): Promise<void> {
-    this.trainingData=trainingData;
-    
 
-    let previousUtcDay=0;
-    let totalDays=0;
-    let averageHeight=0;
-    let averageStartHour=0;
-    let averageEndHour=0;
-
-    let maxHeightOfDay:number|null=null;
-
-    const daysSet=new Set<number>();
-
-    let previousGhiWm2: number = trainingData[0]?.ghiWm2 ?? 0;
-    for(let i=0;i<trainingData.length;i++){
-      let utcGlobalDay =Math.round( new Date(trainingData[i].time).getTime() / 1000 / 60 / 60 / 24);
-      const hour=solarHour(trainingData[i].time, trainingData[i].longitude);
-      const currentGhiWm2=trainingData[i].ghiWm2;
-
-      if(previousGhiWm2===0 && currentGhiWm2!==0){
-        averageStartHour += hour;
-      }
-
-      if(previousGhiWm2!==0 && currentGhiWm2===0){
-        averageEndHour += hour;
-      }
-
-      previousGhiWm2=currentGhiWm2;
- 
-      previousGhiWm2=currentGhiWm2;
-      daysSet.add(utcGlobalDay);
-      if(previousUtcDay!==utcGlobalDay){
-        if(maxHeightOfDay!==null)averageHeight+=maxHeightOfDay;
-        totalDays++;
-        maxHeightOfDay=null;
-        previousUtcDay=utcGlobalDay;
-      }
-
-      if(maxHeightOfDay===null || trainingData[i].ghiWm2>maxHeightOfDay){
-        maxHeightOfDay=trainingData[i].ghiWm2;
-      }
-      
-
-    }
-    
-    averageStartHour/=totalDays;
-    averageEndHour/=totalDays;
-    averageHeight/=totalDays;
-    this.height=averageHeight;
-    this.startHour=averageStartHour;
-    this.endHour=averageEndHour;
-
-    if (this.endHour < this.startHour) this.endHour += 24;
-
-
+  
   }
-
-  private filtersCache: Map<{
-    latitude: number;
-    longitude: number;
-    hour: number;
-  }, GhiSlot[]> = new Map();
+ 
   /**
    * Predice el GHI en un timestamp UTC.
    * @param timestamp - La fecha y hora UTC a predecir.
@@ -98,14 +43,18 @@ private trainingData: GhiSlot[]=[];
    * @returns El valor del GHI predicho.
    */
   async forecast(timestamp: Date, latitude: number, longitude: number): Promise<number> {
-    
-    let hour = solarHour(timestamp, longitude);
-    if (hour < this.startHour) hour += 24;
-
-    const parabola = MathHelper.createParabola(this.height,this.startHour,this.endHour);
-    const kw= parabola(hour);
-    return Math.max(0, kw);
+    return 0;
   }
 }
 
-export const WorkshopModel = new SimplePredictionModel();
+// export const WorkshopModel = new LinearRegression();
+// export const WorkshopModel = new LinearRegressionGlobal();
+// export const WorkshopModel = new SineCosineRegression();
+// export const WorkshopModel = new SineCosineRegressionGlobal();
+// export const WorkshopModel = new PolynomialSpline();
+// export const WorkshopModel = new PolynomialSplineGlobal();
+export const WorkshopModel = new NaiveParabola();
+// export const WorkshopModel = new HeliosComposer();
+// export const WorkshopModel = new TfNeuralNetwork();
+// export const WorkshopModel = new TfNeuralNetworkEnhanced();
+// export const WorkshopModel = new TfTransformer();
