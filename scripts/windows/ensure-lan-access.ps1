@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ProgramPath,
     [int]$ServerPort = 3916,
+    [switch]$Force,
     [switch]$Elevated
 )
 
@@ -45,8 +46,7 @@ function Invoke-LanAccessFix {
     param([string]$ProgramPath, [int]$ServerPort)
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) {
-        Write-Warning "Program not found ($full)."
-        return
+        throw "Program not found ($full). Run setup first."
     }
 
     foreach ($rule in Get-AppInboundRules -ProgramPath $full) {
@@ -63,26 +63,32 @@ function Invoke-LanAccessFix {
         New-NetFirewallRule -DisplayName $allowName `
             -Direction Inbound -Action Allow -Profile Private `
             -Program $full -Protocol TCP -LocalPort $ServerPort | Out-Null
+    } else {
+        Write-Host "Regla Allow del taller ya existe."
     }
-    Write-Host "Firewall corregido."
+
+    $firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
+    & cmd.exe /c "`"$firewallCmd`" $ServerPort"
+    Write-Host "Listo."
 }
 
-if (-not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath)) {
+if (-not $Force -and -not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath)) {
     exit 0
 }
 
-Write-Host "Windows tiene Bun/Python/Java bloqueado en red privada; hace falta corregir (UAC)..." -ForegroundColor Yellow
+if ($Force) {
+    Write-Host "Corrigiendo firewall para la LAN del taller (requiere administrador)..." -ForegroundColor Cyan
+}
 
 if (-not (Test-IsAdmin)) {
     if (-not $Elevated) {
-        $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -ServerPort $ServerPort -Elevated"
+        $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -ServerPort $ServerPort"
+        if ($Force) { $argLine += " -Force" }
+        $argLine += " -Elevated"
         $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -WindowStyle Hidden -ArgumentList $argLine -Wait -PassThru
-        if ($p.ExitCode -ne 0) {
-            Write-Warning "Sin admin no se pudo quitar el bloqueo. Vuelve a ejecutar setup o permite la app en Windows Firewall (Private)."
-        }
-        exit 0
+        exit $p.ExitCode
     }
-    Write-Warning "Could not fix firewall without administrator rights."
+    Write-Error "Run fix-lan-access.cmd from an Administrator Command Prompt."
     exit 1
 }
 

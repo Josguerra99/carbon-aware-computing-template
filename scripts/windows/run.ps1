@@ -32,23 +32,5 @@ if (-not (Test-Path "node_modules")) {
 }
 
 $port = if ($env:PORT) { $env:PORT } else { "3916" }
-$bunExe = (Get-Command bun).Source
-
-Write-Host ""
-Write-Host "=== Red del taller (Windows) ===" -ForegroundColor Cyan
-Write-Host "1) Wi-Fi en perfil PRIVADA."
-Write-Host "2) Si Windows pregunta por Bun: elige RED PRIVADA y PERMITIR (no bloquear en privada)." -ForegroundColor Yellow
-Write-Host ""
-
-$lanMarker = Join-Path $Root ".local\lan-defender-ok"
-if (-not (Test-Path $lanMarker)) {
-    New-Item -ItemType Directory -Path (Split-Path $lanMarker) -Force | Out-Null
-    & (Join-Path $PSScriptRoot "prompt-lan-firewall.ps1") `
-        -Exe $bunExe -ProcessArguments @("run", "dev") -WorkingDirectory $Root -Port ([int]$port)
-    Set-Content -Path $lanMarker -Value (Get-Date -Format "o") -Encoding utf8
-}
-
-& (Join-Path $PSScriptRoot "ensure-lan-access.ps1") -ProgramPath $bunExe -ServerPort ([int]$port)
-
 Write-Host "Starting forecast server (bun run dev) on port $port..."
 bun run dev
