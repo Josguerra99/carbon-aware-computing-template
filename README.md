@@ -55,7 +55,6 @@ Si lo haces a mano:
 | **Bun** | [bun.sh](https://bun.sh) o lo instala `setup.ps1` | `curl -fsSL https://bun.sh/install \| bash` o lo instala `setup.sh` |
 | **Dependencias del proyecto** | `bun install` | `bun install` |
 | **Config** | Copia `.env.example` → `.env` y ajusta `MAIN_SERVER_URL` | Igual |
-| **Firewall (LAN)** | `run.cmd --fix-permissions` si la LAN falla | Abre el puerto en `ufw` si usas firewall |
 
 Arranque manual:
 
