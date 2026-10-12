@@ -20,34 +20,12 @@ function Test-ProfileIncludesPrivate {
     return $s -eq "Any" -or $s -match "Private"
 }
 
-function Get-ProgramInboundRules {
+function Get-AppInboundRules {
     param([string]$ProgramPath)
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) { return @() }
-
     $base = [System.IO.Path]::GetFileName($full)
-    $seen = @{}
-    $out = @()
-
-    foreach ($rule in @(Get-NetFirewallRule -DisplayName $base -ErrorAction SilentlyContinue)) {
-        if (-not $seen[$rule.Name]) { $seen[$rule.Name] = $true; $out += $rule }
-    }
-
-    Get-NetFirewallRule -Direction Inbound -ErrorAction SilentlyContinue | ForEach-Object {
-        $rule = $_
-        $app = Get-NetFirewallApplicationFilter -AssociatedNetFirewallRule $rule -ErrorAction SilentlyContinue
-        if (-not $app.Program) { return }
-        try {
-            $prog = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($app.Program)
-        } catch {
-            $prog = $app.Program
-        }
-        if ($prog -ieq $full -and -not $seen[$rule.Name]) {
-            $seen[$rule.Name] = $true
-            $out += $rule
-        }
-    }
-    return $out
+    return @(Get-NetFirewallRule -DisplayName $base -Direction Inbound -ErrorAction SilentlyContinue)
 }
 
 function Test-NeedsLanAccessFix {
@@ -56,7 +34,7 @@ function Test-NeedsLanAccessFix {
     if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
         return $true
     }
-    foreach ($rule in Get-ProgramInboundRules -ProgramPath $ProgramPath) {
+    foreach ($rule in Get-AppInboundRules -ProgramPath $ProgramPath) {
         if ($rule.Enabled -ne "True") { continue }
         if ($rule.Action -ne "Block") { continue }
         if (Test-ProfileIncludesPrivate -Profile $rule.Profile) { return $true }
@@ -68,19 +46,19 @@ function Invoke-LanAccessFix {
     param([string]$ProgramPath, [int]$Port)
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) {
-        Write-Warning "Program not found ($full); skipping app firewall rules."
+        Write-Host "Program not found ($full); skipping app rules, opening port only."
     } else {
-        foreach ($rule in Get-ProgramInboundRules -ProgramPath $full) {
+        foreach ($rule in Get-AppInboundRules -ProgramPath $full) {
             if ($rule.Enabled -ne "True") { continue }
             if ($rule.Action -ne "Block") { continue }
             if (-not (Test-ProfileIncludesPrivate -Profile $rule.Profile)) { continue }
-            Write-Host "Disabling inbound Block (Private) for: $($rule.DisplayName)"
+            Write-Host "Disabling inbound Block (Private): $($rule.DisplayName)"
             Disable-NetFirewallRule -Name $rule.Name | Out-Null
         }
 
         $allowName = "Carbon Aware Workshop team app Private $Port"
         if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
-            Write-Host "Adding Allow inbound for $([System.IO.Path]::GetFileName($full)) on Private port $Port"
+            Write-Host "Allow inbound for $([System.IO.Path]::GetFileName($full)) on Private port $Port"
             New-NetFirewallRule -DisplayName $allowName `
                 -Direction Inbound -Action Allow -Profile Private `
                 -Program $full -Protocol TCP -LocalPort $Port | Out-Null
@@ -89,6 +67,7 @@ function Invoke-LanAccessFix {
 
     $firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
     & cmd.exe /c "`"$firewallCmd`" $Port"
+    Write-Host "LAN firewall OK."
 }
 
 if (-not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath -Port $Port)) {
@@ -97,19 +76,16 @@ if (-not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath -Port $Port)) {
 
 if (-not (Test-IsAdmin)) {
     if (-not $Elevated) {
-        Write-Host "Windows may block LAN access to this server; adjusting firewall (UAC)..." -ForegroundColor Yellow
-        $args = @(
-            "-NoProfile", "-ExecutionPolicy", "Bypass",
-            "-File", $PSCommandPath,
-            "-ProgramPath", $ProgramPath,
-            "-Port", $Port,
-            "-Elevated"
-        )
-        $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $args -Wait -PassThru
-        exit $p.ExitCode
+        Write-Host "Ajustando firewall para la LAN del taller (acepta UAC)..." -ForegroundColor Yellow
+        $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -Port $Port -Elevated"
+        $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -WindowStyle Hidden -ArgumentList $argLine -Wait -PassThru
+        if ($p.ExitCode -ne 0) {
+            Write-Warning "No se pudo aplicar el firewall (UAC cancelado o error). El facilitador puede no alcanzar el puerto $Port."
+        }
+        exit 0
     }
     Write-Warning "Could not fix firewall without administrator rights."
-    exit 0
+    exit 1
 }
 
 Invoke-LanAccessFix -ProgramPath $ProgramPath -Port $Port
