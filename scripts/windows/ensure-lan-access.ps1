@@ -29,11 +29,7 @@ function Get-AppInboundRules {
 }
 
 function Test-NeedsLanAccessFix {
-    param([string]$ProgramPath, [int]$Port)
-    $allowName = "Carbon Aware Workshop team app Private $Port"
-    if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
-        return $true
-    }
+    param([string]$ProgramPath)
     foreach ($rule in Get-AppInboundRules -ProgramPath $ProgramPath) {
         if ($rule.Enabled -ne "True") { continue }
         if ($rule.Action -ne "Block") { continue }
@@ -46,41 +42,40 @@ function Invoke-LanAccessFix {
     param([string]$ProgramPath, [int]$Port)
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) {
-        Write-Host "Program not found ($full); skipping app rules, opening port only."
-    } else {
-        foreach ($rule in Get-AppInboundRules -ProgramPath $full) {
-            if ($rule.Enabled -ne "True") { continue }
-            if ($rule.Action -ne "Block") { continue }
-            if (-not (Test-ProfileIncludesPrivate -Profile $rule.Profile)) { continue }
-            Write-Host "Disabling inbound Block (Private): $($rule.DisplayName)"
-            Disable-NetFirewallRule -Name $rule.Name | Out-Null
-        }
-
-        $allowName = "Carbon Aware Workshop team app Private $Port"
-        if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
-            Write-Host "Allow inbound for $([System.IO.Path]::GetFileName($full)) on Private port $Port"
-            New-NetFirewallRule -DisplayName $allowName `
-                -Direction Inbound -Action Allow -Profile Private `
-                -Program $full -Protocol TCP -LocalPort $Port | Out-Null
-        }
+        Write-Warning "Program not found ($full)."
+        return
     }
 
-    $firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
-    & cmd.exe /c "`"$firewallCmd`" $Port"
-    Write-Host "LAN firewall OK."
+    foreach ($rule in Get-AppInboundRules -ProgramPath $full) {
+        if ($rule.Enabled -ne "True") { continue }
+        if ($rule.Action -ne "Block") { continue }
+        if (-not (Test-ProfileIncludesPrivate -Profile $rule.Profile)) { continue }
+        Write-Host "Quita Block en Private: $($rule.DisplayName)"
+        Disable-NetFirewallRule -Name $rule.Name | Out-Null
+    }
+
+    $allowName = "Carbon Aware Workshop team app Private $Port"
+    if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
+        Write-Host "Allow inbound para $([System.IO.Path]::GetFileName($full)) (Private, puerto $Port)"
+        New-NetFirewallRule -DisplayName $allowName `
+            -Direction Inbound -Action Allow -Profile Private `
+            -Program $full -Protocol TCP -LocalPort $Port | Out-Null
+    }
+    Write-Host "Firewall corregido."
 }
 
-if (-not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath -Port $Port)) {
+if (-not (Test-NeedsLanAccessFix -ProgramPath $ProgramPath)) {
     exit 0
 }
 
+Write-Host "Windows tiene Bun/Python/Java bloqueado en red privada; hace falta corregir (UAC)..." -ForegroundColor Yellow
+
 if (-not (Test-IsAdmin)) {
     if (-not $Elevated) {
-        Write-Host "Ajustando firewall para la LAN del taller (acepta UAC)..." -ForegroundColor Yellow
         $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -Port $Port -Elevated"
         $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -WindowStyle Hidden -ArgumentList $argLine -Wait -PassThru
         if ($p.ExitCode -ne 0) {
-            Write-Warning "No se pudo aplicar el firewall (UAC cancelado o error). El facilitador puede no alcanzar el puerto $Port."
+            Write-Warning "Sin admin no se pudo quitar el bloqueo. Vuelve a ejecutar setup o permite la app en Windows Firewall (Private)."
         }
         exit 0
     }

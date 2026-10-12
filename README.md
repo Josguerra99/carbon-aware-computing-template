@@ -36,16 +36,11 @@ bash scripts/ubuntu/run.sh
 
 ## Windows y la LAN del taller
 
-Al arrancar, el servidor escucha en **0.0.0.0:3916**. Windows Defender puede mostrar un aviso y crear reglas para **bun.exe**. Si en el popup se elige mal (o queda **Block** en red **Private**), el facilitador no llega al puerto aunque localhost funcione — timeout ~21 s.
+**`setup.cmd`** (sin administrador) arranca el servidor unos segundos para que salga el aviso de **Windows Defender**. Ahí: **Red privada** + **Permitir**. Wi‑Fi del taller en perfil **Private**.
 
-**`run.cmd`** ejecuta `ensure-lan-access.ps1` antes de levantar el servidor: quita **Block** de Bun en Private, añade **Allow** en Private para el puerto **3916** y la regla de puerto LAN. Si hace falta, pide **UAC** una vez; acepta. Marca la Wi‑Fi como **Private** y, si sale el popup de Windows, **Permitir** en redes **privadas**.
+**`run.cmd`** solo pide **UAC** si Windows dejó **Block** para **bun.exe** en red privada (elección incorrecta en el aviso). Si no hay bloqueo, arranca directo.
 
-Manual (admin), solo si hace falta:
-
-```bat
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\ensure-lan-access.ps1 -ProgramPath "%USERPROFILE%\.bun\bin\bun.exe" -Port 3916 -Elevated
-scripts\windows\open-lan-firewall.cmd 3916
-```
+Opcional (admin): `scripts\windows\open-lan-firewall.cmd 3916`
 
 ## Setup manual
 
