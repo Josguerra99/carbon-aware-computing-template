@@ -18,6 +18,7 @@ import {
   SineCosineRegressionHourDoy,
   SineCosineRegressionHourTime,
 } from "./workshop/sineCosineRegression";
+import { HeliosClearSky } from "./workshop/heliosClearSky";
 import { HeliosComposer } from "./workshop/heliosComposer";
 import { TfNeuralNetwork } from "./workshop/tfNeuralNetwork";
 import { TfNeuralNetworkEnhanced } from "./workshop/tfNeuralNetworkEnhanced";
@@ -71,8 +72,9 @@ private trainingData: GhiSlot[]=[];
 // export const WorkshopModel = new PolynomialSplineHourDoy();
 // export const WorkshopModel = new SineCosineRegressionGlobal();
 // export const WorkshopModel = new SineCosineRegressionHourTime();
-export const WorkshopModel = new SineCosineRegressionHourDoy();
+// export const WorkshopModel = new SineCosineRegressionHourDoy();
 // export const WorkshopModel = new NaiveParabola();
+export const WorkshopModel = new HeliosClearSky();
 // export const WorkshopModel = new HeliosComposer();
 // export const WorkshopModel = new TfNeuralNetwork();
 // export const WorkshopModel = new TfNeuralNetworkEnhanced();
