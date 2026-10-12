@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { MAIN_SERVER_URL, PORT } from "../config/env";
 import { historicStore } from "../core/historicStore";
 import { Logger } from "../core/debugLogs";
-import { LoadTrainingData, mapPool } from "../loadData";
+import { LoadTrainingData, mapPool } from "../core/loadData";
 import { WorkshopModel } from "../main";
 const HOUR_MS = 3_600_000;
 const MAX_HOURS = 24 * 100;

@@ -1,4 +1,5 @@
 node_modules
+cache/
 .venv-tfjs-cuda/
 *.log
 data/

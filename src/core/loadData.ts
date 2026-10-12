@@ -1,6 +1,6 @@
-import { TRAIN_DATASETS } from "./config/env";
-import { historicStore } from "./core/historicStore";
-import type { GhiSlot } from "./core/types";
+import { TRAIN_DATASETS } from "../config/env";
+import { historicStore } from "./historicStore";
+import type { GhiSlot } from "./types";
 
 const TRAIN_CONCURRENCY = 4;
 
