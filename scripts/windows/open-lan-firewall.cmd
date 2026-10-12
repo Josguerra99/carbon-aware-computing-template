@@ -14,7 +14,7 @@ echo Firewall: allow inbound TCP !PORT! on Private networks (LocalSubnet only^).
 netsh advfirewall firewall add rule name="!RULE_NAME!" dir=in action=allow protocol=TCP localport=!PORT! profile=private remoteip=localsubnet
 if errorlevel 1 (
   echo.
-  echo Could not add firewall rule. Run setup from an Administrator Command Prompt, or run:
+  echo Could not add firewall rule. Run this script from an Administrator Command Prompt, or run:
   echo   netsh advfirewall firewall add rule name="!RULE_NAME!" dir=in action=allow protocol=TCP localport=!PORT! profile=private remoteip=localsubnet
   exit /b 1
 )

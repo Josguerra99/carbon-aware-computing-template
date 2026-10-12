@@ -32,7 +32,9 @@ if (-not (Test-Path "node_modules")) {
 }
 
 $port = if ($env:PORT) { $env:PORT } else { "3916" }
-$firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
-& cmd.exe /c "`"$firewallCmd`" $port"
+$bunExe = (Get-Command bun).Source
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "ensure-lan-access.ps1") `
+    -ProgramPath $bunExe -Port ([int]$port)
 Write-Host "Starting forecast server (bun run dev) on port $port..."
+Write-Host "Si Windows pregunta por el firewall: elige Red privada y Permitir." -ForegroundColor DarkYellow
 bun run dev

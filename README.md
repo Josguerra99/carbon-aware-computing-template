@@ -12,19 +12,13 @@ Desde la raíz del repo:
 scripts\windows\setup.cmd
 ```
 
-Si la regla de firewall falla, abre **Símbolo del sistema como administrador** y vuelve a ejecutar setup, o:
-
-```bat
-scripts\windows\open-lan-firewall.cmd 3916
-```
-
 **Ubuntu**
 
 ```bash
 bash scripts/ubuntu/setup.sh
 ```
 
-Luego edita `.env` y pon **`MAIN_SERVER_URL`** con la URL del facilitador. Regístrate en el taller (`/register`) con la IP de tu PC. En Windows, usa Wi‑Fi **Privada**.
+Luego edita `.env` y pon **`MAIN_SERVER_URL`** con la URL del facilitador. Regístrate en el taller (`/register`) con la IP de tu PC.
 
 ## Run
 
@@ -40,9 +34,22 @@ scripts\windows\run.cmd
 bash scripts/ubuntu/run.sh
 ```
 
+## Windows y la LAN del taller
+
+Al arrancar, el servidor escucha en **0.0.0.0:3916**. Windows Defender puede mostrar un aviso y crear reglas para **bun.exe**. Si en el popup se elige mal (o queda **Block** en red **Private**), el facilitador no llega al puerto aunque localhost funcione — timeout ~21 s.
+
+**`run.cmd`** ejecuta `ensure-lan-access.ps1` antes de levantar el servidor: quita **Block** de Bun en Private, añade **Allow** en Private para el puerto **3916** y la regla de puerto LAN. Si hace falta, pide **UAC** una vez; acepta. Marca la Wi‑Fi como **Private** y, si sale el popup de Windows, **Permitir** en redes **privadas**.
+
+Manual (admin), solo si hace falta:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\ensure-lan-access.ps1 -ProgramPath "%USERPROFILE%\.bun\bin\bun.exe" -Port 3916 -Elevated
+scripts\windows\open-lan-firewall.cmd 3916
+```
+
 ## Setup manual
 
-El script de setup hace: crear `.env` si no existe, instalar [Bun](https://bun.sh) si falta, `bun install`, y en Windows la regla de firewall para el puerto **3916** (red privada, solo LAN).
+El script de setup hace: crear `.env` si no existe, instalar [Bun](https://bun.sh) si falta y `bun install`.
 
 Si lo haces a mano:
 
