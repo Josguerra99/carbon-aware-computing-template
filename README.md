@@ -36,7 +36,13 @@ bash scripts/ubuntu/run.sh
 
 ## Windows y la LAN del taller
 
-**`run.cmd`** solo arranca el servidor. Si el facilitador no alcanza tu PC (timeout ~21 s) pero `http://localhost:3916` sí responde, ejecuta **`scripts\windows\fix-lan-access.cmd`** (acepta UAC): quita **Block** de **bun.exe** en red privada y aplica reglas Allow. Wi‑Fi en perfil **Private**; si Windows pregunta al arrancar, **Permitir** en redes privadas.
+**`run.cmd`** arranca el servidor. Si el facilitador no alcanza tu PC (timeout ~21 s) pero `http://localhost:3916` sí responde:
+
+```bat
+scripts\windows\run.cmd --fix-permissions
+```
+
+Pide **UAC**, corrige **Block** de **bun.exe** en red privada y aplica reglas Allow; luego arranca igual. Wi‑Fi **Private**; si Windows pregunta al arrancar, **Permitir** en redes privadas.
 
 ## Setup manual
 
@@ -49,7 +55,7 @@ Si lo haces a mano:
 | **Bun** | [bun.sh](https://bun.sh) o lo instala `setup.ps1` | `curl -fsSL https://bun.sh/install \| bash` o lo instala `setup.sh` |
 | **Dependencias del proyecto** | `bun install` | `bun install` |
 | **Config** | Copia `.env.example` → `.env` y ajusta `MAIN_SERVER_URL` | Igual |
-| **Firewall (LAN)** | `scripts\windows\fix-lan-access.cmd` si la LAN falla | Abre el puerto en `ufw` si usas firewall |
+| **Firewall (LAN)** | `run.cmd --fix-permissions` si la LAN falla | Abre el puerto en `ufw` si usas firewall |
 
 Arranque manual:
 

@@ -1,7 +1,19 @@
 #Requires -Version 5.1
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$RemainingArgs
+)
+
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "../..")
 Set-Location $Root
+
+$fixPermissions = $false
+foreach ($a in @($RemainingArgs)) {
+    if ($a -eq "--fix-permissions" -or $a -eq "-FixPermissions") {
+        $fixPermissions = $true
+    }
+}
 
 $bunExe = Join-Path $env:USERPROFILE ".bun\bin\bun.exe"
 if (Test-Path $bunExe) {
@@ -32,5 +44,11 @@ if (-not (Test-Path "node_modules")) {
 }
 
 $port = if ($env:PORT) { $env:PORT } else { "3916" }
+$bunExe = (Get-Command bun).Source
+
+if ($fixPermissions) {
+    & (Join-Path $PSScriptRoot "ensure-lan-access.ps1") -ProgramPath $bunExe -ServerPort ([int]$port) -Force
+}
+
 Write-Host "Starting forecast server (bun run dev) on port $port..."
 bun run dev
