@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ProgramPath,
-    [int]$Port = 3916,
+    [int]$ServerPort = 3916,
     [switch]$Elevated
 )
 
@@ -25,7 +25,10 @@ function Get-AppInboundRules {
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) { return @() }
     $base = [System.IO.Path]::GetFileName($full)
-    return @(Get-NetFirewallRule -DisplayName $base -Direction Inbound -ErrorAction SilentlyContinue)
+    return @(
+        Get-NetFirewallRule -DisplayName $base -ErrorAction SilentlyContinue |
+            Where-Object { $_.Direction -eq "Inbound" }
+    )
 }
 
 function Test-NeedsLanAccessFix {
@@ -39,7 +42,7 @@ function Test-NeedsLanAccessFix {
 }
 
 function Invoke-LanAccessFix {
-    param([string]$ProgramPath, [int]$Port)
+    param([string]$ProgramPath, [int]$ServerPort)
     $full = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProgramPath)
     if (-not (Test-Path -LiteralPath $full)) {
         Write-Warning "Program not found ($full)."
@@ -54,12 +57,12 @@ function Invoke-LanAccessFix {
         Disable-NetFirewallRule -Name $rule.Name | Out-Null
     }
 
-    $allowName = "Carbon Aware Workshop team app Private $Port"
+    $allowName = "Carbon Aware Workshop team app Private $ServerPort"
     if (-not (Get-NetFirewallRule -DisplayName $allowName -ErrorAction SilentlyContinue)) {
-        Write-Host "Allow inbound para $([System.IO.Path]::GetFileName($full)) (Private, puerto $Port)"
+        Write-Host "Allow inbound para $([System.IO.Path]::GetFileName($full)) (Private, puerto $ServerPort)"
         New-NetFirewallRule -DisplayName $allowName `
             -Direction Inbound -Action Allow -Profile Private `
-            -Program $full -Protocol TCP -LocalPort $Port | Out-Null
+            -Program $full -Protocol TCP -LocalPort $ServerPort | Out-Null
     }
     Write-Host "Firewall corregido."
 }
@@ -72,7 +75,7 @@ Write-Host "Windows tiene Bun/Python/Java bloqueado en red privada; hace falta c
 
 if (-not (Test-IsAdmin)) {
     if (-not $Elevated) {
-        $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -Port $Port -Elevated"
+        $argLine = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ProgramPath `"$ProgramPath`" -ServerPort $ServerPort -Elevated"
         $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -WindowStyle Hidden -ArgumentList $argLine -Wait -PassThru
         if ($p.ExitCode -ne 0) {
             Write-Warning "Sin admin no se pudo quitar el bloqueo. Vuelve a ejecutar setup o permite la app en Windows Firewall (Private)."
@@ -83,5 +86,5 @@ if (-not (Test-IsAdmin)) {
     exit 1
 }
 
-Invoke-LanAccessFix -ProgramPath $ProgramPath -Port $Port
+Invoke-LanAccessFix -ProgramPath $ProgramPath -ServerPort $ServerPort
 exit 0

@@ -34,6 +34,6 @@ if (-not (Test-Path "node_modules")) {
 $port = if ($env:PORT) { $env:PORT } else { "3916" }
 $bunExe = (Get-Command bun).Source
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "ensure-lan-access.ps1") `
-    -ProgramPath $bunExe -Port ([int]$port)
+    -ProgramPath $bunExe -ServerPort ([int]$port)
 Write-Host "Starting forecast server (bun run dev) on port $port..."
 bun run dev
