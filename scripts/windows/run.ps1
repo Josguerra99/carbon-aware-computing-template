@@ -32,5 +32,7 @@ if (-not (Test-Path "node_modules")) {
 }
 
 $port = if ($env:PORT) { $env:PORT } else { "3916" }
+$firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
+& cmd.exe /c "`"$firewallCmd`" $port"
 Write-Host "Starting forecast server (bun run dev) on port $port..."
 bun run dev

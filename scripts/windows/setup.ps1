@@ -35,5 +35,8 @@ Ensure-Bun
 Write-Host "Installing dependencies (bun install)..."
 bun install
 
+$firewallCmd = Join-Path $PSScriptRoot "open-lan-firewall.cmd"
+& cmd.exe /c "`"$firewallCmd`" 3916"
+
 Write-Host ""
-Write-Host "Setup complete. Run: powershell -ExecutionPolicy Bypass -File scripts/windows/run.ps1" -ForegroundColor Green
+Write-Host "Setup complete. Run: scripts\windows\run.cmd" -ForegroundColor Green
