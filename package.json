@@ -12,7 +12,8 @@
     "setup:tf": "powershell -ExecutionPolicy Bypass -File scripts/setup-tf-node.ps1",
     "setup:wsl": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tf.ps1",
     "setup:wsl:cuda": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tfjs-cuda-venv.ps1",
-    "start:wsl": "powershell -ExecutionPolicy Bypass -File scripts/start-wsl-tf.ps1"
+    "start:wsl": "powershell -ExecutionPolicy Bypass -File scripts/start-wsl-tf.ps1",
+    "test": "bun test src"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",

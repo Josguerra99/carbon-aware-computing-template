@@ -3,7 +3,6 @@ import { cors } from "hono/cors";
 import { MAIN_SERVER_URL, PORT } from "../config/env";
 import { historicStore } from "../core/historicStore";
 import { Logger } from "../core/debugLogs";
-import { perfLog, perfMs, perfNow } from "../core/perfLog";
 import { LoadTrainingData, mapPool } from "../loadData";
 import { WorkshopModel } from "../main";
 const HOUR_MS = 3_600_000;
@@ -46,19 +45,12 @@ function hourlyUtcRange(start: Date, end: Date): Date[] {
   return times;
 }
 
-{
-  const t0 = perfNow();
-  perfLog("training load start");
-  const datasets = await LoadTrainingData.load();
-  perfLog(`training load ${perfMs(t0)}ms slots=${datasets.length}`);
-  const t1 = perfNow();
-  await WorkshopModel.train(datasets);
-  perfLog(`model.train ${perfMs(t1)}ms`);
-  perfLog(`startup total ${perfMs(t0)}ms`);
-}
+console.log("Training prediction model...");
+const datasets = await LoadTrainingData.load();
+await WorkshopModel.train(datasets);
+console.log("Prediction model trained");
 
 app.get("/forecast/:datasetid", async (c) => {
-  const tRequest = perfNow();
   const datasetId = c.req.param("datasetid");
   const start = parseUtc(c.req.query("start"));
   const end = parseUtc(c.req.query("end"));
@@ -72,43 +64,23 @@ app.get("/forecast/:datasetid", async (c) => {
   }
   let latitude: number;
   let longitude: number;
-  const tMeta = perfNow();
   try {
     const place = await historicStore.getMeta(datasetId);
     latitude = place.latitude;
     longitude = place.longitude;
   } catch {
-    perfLog(`forecast ${datasetId} meta fail ${perfMs(tMeta)}ms`);
     return c.json({ error: `No se pudo leer el histórico de ${datasetId}` }, 502);
   }
-  perfLog(
-    `forecast ${datasetId} meta ${perfMs(tMeta)}ms hours=${hours.length} concurrency=${FORECAST_CONCURRENCY}`,
-  );
   Logger.AllowDebugLogs = true;
   let slots: { time: string; predWm2: number }[] = [];
-  let predictSumMs = 0;
-  let predictMaxMs = 0;
-  const tPool = perfNow();
   try {
-    slots = await mapPool(hours, FORECAST_CONCURRENCY, async (timestamp) => {
-      const tOne = perfNow();
-      const predWm2 = Number(await WorkshopModel.forecast(timestamp, latitude, longitude)) || 0;
-      const oneMs = perfMs(tOne);
-      predictSumMs += oneMs;
-      if (oneMs > predictMaxMs) {
-        predictMaxMs = oneMs;
-      }
-      return { time: timestamp.toISOString(), predWm2 };
-    });
+    slots = await mapPool(hours, FORECAST_CONCURRENCY, async (timestamp) => ({
+      time: timestamp.toISOString(),
+      predWm2: Number(await WorkshopModel.forecast(timestamp, latitude, longitude)) || 0,
+    }));
   } finally {
     Logger.AllowDebugLogs = false;
   }
-  const poolMs = perfMs(tPool);
-  const avgMs = hours.length ? (predictSumMs / hours.length).toFixed(2) : "0";
-  perfLog(
-    `forecast ${datasetId} predict pool=${poolMs}ms sum=${predictSumMs}ms max=${predictMaxMs}ms avg=${avgMs}ms/h`,
-  );
-  perfLog(`forecast ${datasetId} total ${perfMs(tRequest)}ms`);
   return c.json({ datasetId, slots });
 });
 

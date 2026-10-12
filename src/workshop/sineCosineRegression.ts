@@ -1,7 +1,9 @@
 import { MathHelper } from "../core/mathHelper";
 import { PredictionModel } from "../core/predictionModel";
 import type { GhiSlot } from "../core/types";
+import { bucketTrainingBySolarHour, xTimeMs } from "./hourGrouping";
 
+/** Mode 1 — sin/cos vs dayOfYearUtc on all training rows. */
 export class SineCosineRegressionGlobal extends PredictionModel {
     private predictDoy: ((doy: number) => number) | null = null;
 
@@ -22,10 +24,36 @@ export class SineCosineRegressionGlobal extends PredictionModel {
     }
 }
 
-export class SineCosineRegression extends PredictionModel {
+/** Mode 2 — 24 sin/cos models (one per solarHour), X = time.getTime(). */
+export class SineCosineRegressionHourTime extends PredictionModel {
+    private models = new Map<number, (tMs: number) => number>();
+
+    async train(trainingData: GhiSlot[]): Promise<void> {
+        this.models.clear();
+        for (const [solarHour, rows] of bucketTrainingBySolarHour(trainingData, xTimeMs)) {
+            const model = MathHelper.createSineCosineRegressionOnTimeMs(rows);
+            if (model) {
+                this.models.set(solarHour, model);
+            }
+        }
+    }
+
+    async forecast(timestamp: Date, latitude: number, longitude: number): Promise<number> {
+        const solarHour = MathHelper.solarHour(timestamp, longitude);
+        const model = this.models.get(solarHour);
+        if (!model) {
+            throw new Error("Model not trained");
+        }
+        return Math.max(0, model(timestamp.getTime()));
+    }
+}
+
+/** Mode 3 — 24 sin/cos models (one per solarHour), X = dayOfYearUtc. */
+export class SineCosineRegressionHourDoy extends PredictionModel {
     private models = new Map<number, (doy: number) => number>();
 
     async train(trainingData: GhiSlot[]): Promise<void> {
+        this.models.clear();
         const bySolarHour = new Map<number, { doy: number; y: number }[]>();
         for (const data of trainingData) {
             const solarHour = MathHelper.solarHour(data.time, data.longitude);
@@ -55,3 +83,6 @@ export class SineCosineRegression extends PredictionModel {
         return Math.max(0, model(MathHelper.dayOfYearUtc(timestamp)));
     }
 }
+
+/** @deprecated Prefer `SineCosineRegressionHourDoy` (symmetric with `LinearRegressionHourDoy`). */
+export { SineCosineRegressionHourDoy as SineCosineRegression };

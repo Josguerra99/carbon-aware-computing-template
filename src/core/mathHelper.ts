@@ -92,6 +92,12 @@ export namespace MathHelper {
         ];
     }
 
+    export function sineFeaturesFromTimeMs(tMs: number, tMin: number, tMax: number): number[] {
+        const xn = (tMs - tMin) / (tMax - tMin || 1);
+        const angle = 2 * Math.PI * xn;
+        return [1, Math.sin(angle), Math.cos(angle)];
+    }
+
     export function createSineCosineRegression(
         points: { doy: number; y: number }[],
     ): ((doy: number) => number) | null {
@@ -106,6 +112,30 @@ export namespace MathHelper {
             return null;
         }
         return (doy: number) => predict(sineFeatures(doy));
+    }
+
+    /** Sin/cos on normalized UTC ms within the sample span (mode 2: X = t). */
+    export function createSineCosineRegressionOnTimeMs(
+        points: { x: number; y: number }[],
+    ): ((tMs: number) => number) | null {
+        if (points.length < 3) {
+            return null;
+        }
+        let tMin = points[0]!.x;
+        let tMax = points[0]!.x;
+        for (const point of points) {
+            tMin = Math.min(tMin, point.x);
+            tMax = Math.max(tMax, point.x);
+        }
+        const featuresAt = (tMs: number) => sineFeaturesFromTimeMs(tMs, tMin, tMax);
+        const predict = fitByFeatures(
+            points.map((p) => featuresAt(p.x)),
+            points.map((p) => p.y),
+        );
+        if (!predict) {
+            return null;
+        }
+        return (tMs: number) => predict(featuresAt(tMs));
     }
 
     export function createPolynomialSplineRegression(
