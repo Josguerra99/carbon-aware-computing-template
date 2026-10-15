@@ -82,7 +82,7 @@ console.log(`==> .env updated (MAIN_SERVER_URL=${mainUrl}, TFJS_BACKEND=gpu)`);
 NODE
 
 echo "==> Smoke test native backend (TFJS_BACKEND=gpu)..."
-if ! TFJS_BACKEND=gpu node --import tsx -e "import { ensureTfBackend } from './src/workshop/tfBackend.ts'; await ensureTfBackend();" 2>&1 | tee /tmp/tfjs-smoke.log; then
+if ! TFJS_BACKEND=gpu node --import tsx -e "import { ensureTfBackend } from './src/core/tf/tfBackend.ts'; await ensureTfBackend();" 2>&1 | tee /tmp/tfjs-smoke.log; then
   echo "WARN: backend smoke test failed."
 fi
 if grep -q "libcudart.so.11" /tmp/tfjs-smoke.log 2>/dev/null; then
