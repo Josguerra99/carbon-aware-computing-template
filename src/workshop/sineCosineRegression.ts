@@ -1,8 +1,6 @@
 import { MathHelper } from "../core/mathHelper";
 import { PredictionModel } from "../core/predictionModel";
 import type { GhiSlot } from "../core/types";
-import { bucketTrainingBySolarHour, xTimeMs } from "./hourGrouping";
-
 /** Mode 1 — sin/cos vs dayOfYearUtc on all training rows. */
 export class SineCosineRegressionGlobal extends PredictionModel {
     private predictDoy: ((doy: number) => number) | null = null;
@@ -30,7 +28,17 @@ export class SineCosineRegressionHourTime extends PredictionModel {
 
     async train(trainingData: GhiSlot[]): Promise<void> {
         this.models.clear();
-        for (const [solarHour, rows] of bucketTrainingBySolarHour(trainingData, xTimeMs)) {
+        const pointsBySolarHour = new Map<number, { x: number; y: number }[]>();
+        for (const row of trainingData) {
+            const solarHour = MathHelper.solarHour(row.time, row.longitude);
+            let points = pointsBySolarHour.get(solarHour);
+            if (!points) {
+                points = [];
+                pointsBySolarHour.set(solarHour, points);
+            }
+            points.push({ x: row.time.getTime(), y: row.ghiWm2 });
+        }
+        for (const [solarHour, rows] of pointsBySolarHour) {
             const model = MathHelper.createSineCosineRegressionOnTimeMs(rows);
             if (model) {
                 this.models.set(solarHour, model);

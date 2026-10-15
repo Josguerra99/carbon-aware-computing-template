@@ -62,3 +62,20 @@ Arranque manual:
 bun install
 bun run dev
 ```
+
+## TensorFlow.js en WSL (GPU) + proxy LAN
+
+Para modelos TF del taller (`tfjs-node-gpu`), el servidor Node corre en **WSL**; Windows publica **:3916** con un proxy TCP (el sitio en **:3915** llama a tu PC en ese puerto).
+
+| Pieza | Dónde |
+| --- | --- |
+| Servidor TF + nodemon | WSL → `scripts/start-wsl-tf.sh` |
+| Proxy LAN :3916 → WSL :3917 | Windows → `scripts/win-team-proxy.py` |
+| Orquestación (proxy + WSL) | `npm run start:wsl` o `scripts\windows\start-wsl-tf.cmd` |
+| Sitio + proxy + WSL | `npm run start:wsl:stack` o `scripts\windows\start-wsl-stack.cmd` |
+
+**Primera vez:** `npm run setup:wsl` (Node 20 + tfjs-node-gpu en WSL). Opcional CUDA: `npm run setup:wsl:cuda`.
+
+**Requisitos:** sitio del taller en marcha en **0.0.0.0:3915** (`cd carbon-aware-computing-website && bun run dev`). El stack script puede arrancarlo si está al lado de este repo.
+
+**Solo WSL** (sin proxy, puerto 3916 directo en WSL): `bash scripts/start-wsl-tf.sh`

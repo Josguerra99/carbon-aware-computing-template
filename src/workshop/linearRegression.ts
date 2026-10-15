@@ -1,7 +1,6 @@
 import { MathHelper } from "../core/mathHelper";
 import { PredictionModel } from "../core/predictionModel";
 import { GhiSlot } from "../core/types";
-import { bucketTrainingBySolarHour, xDoyUtc, xTimeMs } from "./hourGrouping";
 
 /** Mode 1 — global linear regression, X = time.getTime(). */
 export class LinearRegressionGlobal extends PredictionModel {
@@ -27,8 +26,18 @@ export class LinearRegression extends PredictionModel {
 
   async train(trainingData: GhiSlot[]): Promise<void> {
     this.linearRegressions.clear();
-    for (const [solarHour, data] of bucketTrainingBySolarHour(trainingData, xTimeMs)) {
-      this.linearRegressions.set(solarHour, MathHelper.createLinearRegression(data));
+    const pointsBySolarHour = new Map<number, { x: number; y: number }[]>();
+    for (const row of trainingData) {
+      const solarHour = MathHelper.solarHour(row.time, row.longitude);
+      let points = pointsBySolarHour.get(solarHour);
+      if (!points) {
+        points = [];
+        pointsBySolarHour.set(solarHour, points);
+      }
+      points.push({ x: row.time.getTime(), y: row.ghiWm2 });
+    }
+    for (const [solarHour, points] of pointsBySolarHour) {
+      this.linearRegressions.set(solarHour, MathHelper.createLinearRegression(points));
     }
   }
 
@@ -48,8 +57,18 @@ export class LinearRegressionHourDoy extends PredictionModel {
 
   async train(trainingData: GhiSlot[]): Promise<void> {
     this.linearRegressions.clear();
-    for (const [solarHour, data] of bucketTrainingBySolarHour(trainingData, xDoyUtc)) {
-      this.linearRegressions.set(solarHour, MathHelper.createLinearRegression(data));
+    const pointsBySolarHour = new Map<number, { x: number; y: number }[]>();
+    for (const row of trainingData) {
+      const solarHour = MathHelper.solarHour(row.time, row.longitude);
+      let points = pointsBySolarHour.get(solarHour);
+      if (!points) {
+        points = [];
+        pointsBySolarHour.set(solarHour, points);
+      }
+      points.push({ x: MathHelper.dayOfYearUtc(row.time), y: row.ghiWm2 });
+    }
+    for (const [solarHour, points] of pointsBySolarHour) {
+      this.linearRegressions.set(solarHour, MathHelper.createLinearRegression(points));
     }
   }
 

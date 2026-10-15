@@ -1,7 +1,6 @@
 import { MathHelper } from "../core/mathHelper";
 import { PredictionModel } from "../core/predictionModel";
 import type { GhiSlot } from "../core/types";
-import { bucketTrainingBySolarHour, xDoyUtc, xTimeMs } from "./hourGrouping";
 
 /** Mode 1 — global spline, X = time.getTime(). */
 export class PolynomialSplineGlobal extends PredictionModel {
@@ -27,8 +26,18 @@ export class PolynomialSpline extends PredictionModel {
 
   async train(trainingData: GhiSlot[]): Promise<void> {
     this.models.clear();
-    for (const [solarHour, rows] of bucketTrainingBySolarHour(trainingData, xTimeMs)) {
-      const model = MathHelper.createPolynomialSplineRegression(rows);
+    const pointsBySolarHour = new Map<number, { x: number; y: number }[]>();
+    for (const row of trainingData) {
+      const solarHour = MathHelper.solarHour(row.time, row.longitude);
+      let points = pointsBySolarHour.get(solarHour);
+      if (!points) {
+        points = [];
+        pointsBySolarHour.set(solarHour, points);
+      }
+      points.push({ x: row.time.getTime(), y: row.ghiWm2 });
+    }
+    for (const [solarHour, points] of pointsBySolarHour) {
+      const model = MathHelper.createPolynomialSplineRegression(points);
       if (model) {
         this.models.set(solarHour, model);
       }
@@ -51,8 +60,18 @@ export class PolynomialSplineHourDoy extends PredictionModel {
 
   async train(trainingData: GhiSlot[]): Promise<void> {
     this.models.clear();
-    for (const [solarHour, rows] of bucketTrainingBySolarHour(trainingData, xDoyUtc)) {
-      const model = MathHelper.createPolynomialSplineRegression(rows);
+    const pointsBySolarHour = new Map<number, { x: number; y: number }[]>();
+    for (const row of trainingData) {
+      const solarHour = MathHelper.solarHour(row.time, row.longitude);
+      let points = pointsBySolarHour.get(solarHour);
+      if (!points) {
+        points = [];
+        pointsBySolarHour.set(solarHour, points);
+      }
+      points.push({ x: MathHelper.dayOfYearUtc(row.time), y: row.ghiWm2 });
+    }
+    for (const [solarHour, points] of pointsBySolarHour) {
+      const model = MathHelper.createPolynomialSplineRegression(points);
       if (model) {
         this.models.set(solarHour, model);
       }
