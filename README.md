@@ -2,6 +2,8 @@
 
 Servidor de pronóstico del taller (puerto **3916**). El sitio del taller lo opera el facilitador; tú solo levantas este repo.
 
+**Modelos de ejemplo:** van en `src/workshop/` (gitignored, como en las plantillas Python/Java). Copia soluciones ahí en local; en git solo vive `src/main.ts` con `MyPredictionModel`.
+
 ## Setup
 
 Desde la raíz del repo:
