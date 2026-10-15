@@ -37,16 +37,33 @@ function Find-Python {
     throw "Python not found (needed for LAN proxy on port 3916)."
 }
 
-$workshopHealth = "http://127.0.0.1:3915/api/health"
-try {
-    $null = Invoke-WebRequest -Uri $workshopHealth -TimeoutSec 4 -UseBasicParsing
-} catch {
-    Write-Host "ERROR: Workshop site not responding at $workshopHealth"
-    Write-Host "Start: cd carbon-aware-computing-website; bun dev"
-    exit 1
+$Root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+
+function Get-EnvMainServerUrl {
+    param([string]$RepoRoot)
+    $envFile = Join-Path $RepoRoot ".env"
+    if (-not (Test-Path -LiteralPath $envFile)) {
+        return "http://127.0.0.1:3915"
+    }
+    foreach ($line in Get-Content -LiteralPath $envFile) {
+        if ($line -match '^\s*MAIN_SERVER_URL\s*=\s*(.+)\s*$') {
+            return $Matches[1].Trim().TrimEnd('/')
+        }
+    }
+    return "http://127.0.0.1:3915"
 }
 
-$Root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+$mainBase = Get-EnvMainServerUrl -RepoRoot $Root
+$workshopHealth = "$mainBase/api/health"
+try {
+    $null = Invoke-WebRequest -Uri $workshopHealth -TimeoutSec 6 -UseBasicParsing
+    Write-Host "Workshop site OK: $mainBase"
+} catch {
+    Write-Host "ERROR: Workshop site not responding at $workshopHealth"
+    Write-Host "Check .env MAIN_SERVER_URL (base URL, no /forecast). Same Wi-Fi as facilitator."
+    Write-Host "Local site only: cd carbon-aware-computing-website; bun run dev"
+    exit 1
+}
 $WslPath = ConvertTo-WslPath -WindowsRoot $Root
 $proxyScript = Join-Path $Root "scripts\win-team-proxy.py"
 $publicPort = 3916

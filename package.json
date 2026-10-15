@@ -9,11 +9,12 @@
     "start": "bun run src/server/index.ts",
     "dev:node": "nodemon",
     "start:node": "tsx src/server/index.ts",
-    "setup:tf": "powershell -ExecutionPolicy Bypass -File scripts/setup-tf-node.ps1",
-    "setup:wsl": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tf.ps1",
-    "setup:wsl:cuda": "powershell -ExecutionPolicy Bypass -File scripts/setup-wsl-tfjs-cuda-venv.ps1",
-    "start:wsl": "powershell -ExecutionPolicy Bypass -File scripts/start-wsl-tf.ps1",
-    "start:wsl:stack": "powershell -ExecutionPolicy Bypass -File scripts/start-wsl-stack.ps1",
+    "setup:tf": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-tf-node.ps1",
+    "setup:wsl:host": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/windows/setup-wsl-features.ps1",
+    "setup:wsl": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-wsl-tf.ps1",
+    "setup:wsl:cuda": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-wsl-tfjs-cuda-venv.ps1",
+    "start:wsl": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-wsl-tf.ps1",
+    "start:wsl:stack": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-wsl-stack.ps1",
     "test": "bun test src"
   },
   "dependencies": {

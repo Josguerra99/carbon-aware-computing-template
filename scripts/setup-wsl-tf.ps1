@@ -2,14 +2,20 @@ $ErrorActionPreference = "Stop"
 
 function ConvertTo-WslPath {
     param([string]$WindowsRoot)
-    $attempt = & wsl.exe wslpath -a "$WindowsRoot" 2>$null
-    if ($LASTEXITCODE -eq 0 -and $attempt) {
-        return ($attempt | Out-String).Trim()
-    }
     if ($WindowsRoot -match '^([A-Za-z]):\\(.*)$') {
         $drive = $Matches[1].ToLower()
         $rest = $Matches[2] -replace '\\', '/'
         return "/mnt/$drive/$rest"
+    }
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    try {
+        $attempt = & wsl.exe wslpath -a "$WindowsRoot" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $attempt) {
+            return ($attempt | Out-String).Trim()
+        }
+    } finally {
+        $ErrorActionPreference = $prevEap
     }
     throw "Could not convert path to WSL: $WindowsRoot"
 }

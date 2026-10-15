@@ -8,13 +8,38 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Test-WorkshopHealth {
+$StackRoot = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")
+
+function Get-EnvMainServerUrl {
+    param([string]$RepoRoot)
+    $envFile = Join-Path $RepoRoot ".env"
+    if (-not (Test-Path -LiteralPath $envFile)) {
+        return $null
+    }
+    foreach ($line in Get-Content -LiteralPath $envFile) {
+        if ($line -match '^\s*MAIN_SERVER_URL\s*=\s*(.+)\s*$') {
+            return $Matches[1].Trim().TrimEnd('/')
+        }
+    }
+    return $null
+}
+
+function Test-WorkshopHealthAt {
+    param([string]$BaseUrl)
     try {
-        $null = Invoke-WebRequest -Uri "http://127.0.0.1:3915/api/health" -TimeoutSec 4 -UseBasicParsing
+        $null = Invoke-WebRequest -Uri "$BaseUrl/api/health" -TimeoutSec 6 -UseBasicParsing
         return $true
     } catch {
         return $false
     }
+}
+
+function Test-WorkshopHealth {
+    $fromEnv = Get-EnvMainServerUrl -RepoRoot $StackRoot
+    if ($fromEnv -and (Test-WorkshopHealthAt -BaseUrl $fromEnv)) {
+        return $true
+    }
+    return Test-WorkshopHealthAt -BaseUrl "http://127.0.0.1:3915"
 }
 
 function Resolve-WebsiteRoot {
@@ -41,8 +66,17 @@ function Start-WorkshopSite {
 }
 
 if (-not $SkipWebsite) {
+    $envMain = Get-EnvMainServerUrl -RepoRoot $StackRoot
     if (Test-WorkshopHealth) {
-        Write-Host "Workshop site already up at http://127.0.0.1:3915"
+        if ($envMain -and (Test-WorkshopHealthAt -BaseUrl $envMain)) {
+            Write-Host "Workshop site already up at $envMain (from .env)"
+        } else {
+            Write-Host "Workshop site already up at http://127.0.0.1:3915"
+        }
+    } elseif ($envMain -and -not ($envMain -match '^https?://(127\.0\.0\.1|localhost)(:|/|$)')) {
+        Write-Host "ERROR: .env MAIN_SERVER_URL=$envMain is not reachable from Windows."
+        Write-Host "Use the facilitator LAN URL or: start-wsl-stack.cmd -SkipWebsite"
+        exit 1
     } else {
         $siteRoot = Resolve-WebsiteRoot -Override $WebsiteRoot
         if (-not $siteRoot) {

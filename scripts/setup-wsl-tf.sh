@@ -41,11 +41,20 @@ rm -rf node_modules/@tensorflow/tfjs-node node_modules/@tensorflow/tfjs-node-gpu
 npm install @tensorflow/tfjs-node-gpu@4.22.0 @tensorflow/tfjs-node@4.22.0
 npm rebuild @tensorflow/tfjs-node-gpu @tensorflow/tfjs-node
 
-if [[ ! -d .venv-tfjs-cuda/lib/python3.12/site-packages/nvidia/cuda_runtime ]]; then
-  echo "==> CUDA 11 + cuDNN 8 for GPU (pip venv, no sudo)..."
-  bash scripts/setup-wsl-tfjs-cuda-venv.sh
+cuda_wheels_present() {
+  local venv
+  venv="$(bash "$ROOT/scripts/wsl-tfjs-cuda-venv-path.sh" "$ROOT")"
+  shopt -s nullglob
+  local hits=("$venv"/lib/python3.*/site-packages/nvidia/cuda_runtime)
+  shopt -u nullglob
+  [[ ${#hits[@]} -gt 0 ]]
+}
+
+if cuda_wheels_present; then
+  echo "==> CUDA pip venv already present (CUDA 11 wheels)."
 else
-  echo "==> .venv-tfjs-cuda already present (CUDA 11 wheels)."
+  echo "==> CUDA 11 + cuDNN 8 for GPU (pip venv; needs python3-venv once via apt)..."
+  bash scripts/setup-wsl-tfjs-cuda-venv.sh
 fi
 
 if [[ ! -f .env ]]; then

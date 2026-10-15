@@ -47,28 +47,42 @@ resolve_main_url() {
 
 check_health() {
   local base="$1"
+  base="${base%/}"
   curl -4 -sf --connect-timeout 2 --max-time 4 "${base}/api/health" >/dev/null
 }
 
-MAIN_SERVER_URL=""
-for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  if candidate="$(resolve_main_url)" && check_health "$candidate"; then
-    MAIN_SERVER_URL="$candidate"
-    export MAIN_SERVER_URL
-    break
-  fi
-  if [[ "$attempt" -lt 10 ]]; then
-    echo "Waiting for workshop site on port ${WORKSHOP_PORT} (attempt ${attempt}/10)..."
-    sleep 2
-  fi
-done
+MAIN_RESOLVED=""
+env_base="${MAIN_SERVER_URL:-}"
+env_base="${env_base%/}"
+if [[ -n "$env_base" ]] && check_health "$env_base"; then
+  MAIN_RESOLVED="$env_base"
+  echo "Workshop site OK at MAIN_SERVER_URL from .env ($MAIN_RESOLVED)"
+fi
 
-if [[ -z "${MAIN_SERVER_URL:-}" ]]; then
-  echo "ERROR: Workshop site not reachable from WSL on port ${WORKSHOP_PORT}."
-  echo "On Windows start: cd carbon-aware-computing-website && bun dev"
-  echo "Site must listen on 0.0.0.0:3915"
+if [[ -z "$MAIN_RESOLVED" ]]; then
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if candidate="$(resolve_main_url)" && check_health "$candidate"; then
+      MAIN_RESOLVED="$candidate"
+      break
+    fi
+    if [[ "$attempt" -lt 10 ]]; then
+      echo "Waiting for workshop site on port ${WORKSHOP_PORT} (attempt ${attempt}/10)..."
+      sleep 2
+    fi
+  done
+fi
+
+if [[ -z "$MAIN_RESOLVED" ]]; then
+  echo "ERROR: Workshop site not reachable from WSL."
+  if [[ -n "$env_base" ]]; then
+    echo "  .env MAIN_SERVER_URL=$env_base (/api/health failed from WSL)"
+  fi
+  echo "  Fix LAN/firewall or set MAIN_SERVER_URL to a host WSL can reach."
+  echo "  Local dev: cd carbon-aware-computing-website && bun run dev on 0.0.0.0:3915"
   exit 1
 fi
+
+export MAIN_SERVER_URL="$MAIN_RESOLVED"
 
 if [[ "${WIN_PROXY:-}" == "1" ]]; then
   PORT=3917

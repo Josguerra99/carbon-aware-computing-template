@@ -7,3 +7,4 @@ data/
 .local/
 src/manual.ts
 src/workshop/
+src/workshop-*

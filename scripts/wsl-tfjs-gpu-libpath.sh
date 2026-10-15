@@ -3,7 +3,7 @@
 set -eu
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV="${ROOT}/.venv-tfjs-cuda"
+VENV="$(bash "$ROOT/scripts/wsl-tfjs-cuda-venv-path.sh" "$ROOT")"
 
 if [[ ! -d "$VENV" ]]; then
   return 0 2>/dev/null || exit 0
