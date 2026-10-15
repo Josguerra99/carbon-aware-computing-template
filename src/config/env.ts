@@ -7,6 +7,9 @@ export const PORT = Number(process.env.PORT ?? 3916);
 
 export const TRAIN_DATASETS = (process.env.TRAIN_DATASETS ?? "all").trim();
 
+/** When set, historic/train API uses this workshop level (must match Pronóstico ?config=). */
+export const WORKSHOP_CONFIG_ID = (process.env.WORKSHOP_CONFIG_ID ?? "").trim() || null;
+
 /** 0 disables TTL; cache still refreshes when configId or csvBundleHash changes. */
 export const HISTORIC_CACHE_TTL_MS = (() => {
   const raw = Number(process.env.HISTORIC_CACHE_TTL_MS);

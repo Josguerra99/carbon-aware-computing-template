@@ -10,4 +10,4 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 source "$NVM_DIR/nvm.sh"
 nvm use 20 >/dev/null
 export TFJS_BACKEND=gpu
-exec node --import tsx --import ./src/workshop/tfPreload.ts -e "import { ensureTfBackend } from './src/workshop/tfBackend.ts'; await ensureTfBackend();"
+exec node --import tsx --import ./src/core/tf/tfPreload.ts -e "import { ensureTfBackend } from './src/core/tf/tfBackend.ts'; await ensureTfBackend();"
