@@ -28,6 +28,10 @@ set +a
 
 export TFJS_BACKEND="${TFJS_BACKEND:-gpu}"
 
+# Repo on /mnt/<drive> often misses inotify; nodemon needs polling to see saves from Windows editors.
+export CHOKIDAR_USEPOLLING="${CHOKIDAR_USEPOLLING:-1}"
+export CHOKIDAR_INTERVAL="${CHOKIDAR_INTERVAL:-500}"
+
 # CUDA 11 + cuDNN 8: pip venv (no sudo) or system toolkit (see wsl-install-cuda11-tfjs.sh).
 # shellcheck disable=SC1091
 source "$ROOT/scripts/wsl-tfjs-gpu-libpath.sh"

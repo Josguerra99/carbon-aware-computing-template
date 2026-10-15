@@ -1,5 +1,7 @@
 import { PredictionModel } from "./core/predictionModel";
 import type { GhiHistoric, GhiSlot } from "./core/types";
+import { LinearRegression } from "./workshop/linearRegression";
+import { NaiveParabola } from "./workshop/naiveParabola";
 
 class SimplePredictionModel extends PredictionModel {
   /**
@@ -23,4 +25,4 @@ class SimplePredictionModel extends PredictionModel {
   }
 }
 
-export const WorkshopModel = new SimplePredictionModel();
+export const WorkshopModel = new LinearRegression();
