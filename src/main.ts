@@ -22,4 +22,4 @@ class MyPredictionModel extends PredictionModel {
   }
 }
 
-export const WorkshopModel = WorkshopModelInstance;
+export const WorkshopModel = new MyPredictionModel();
